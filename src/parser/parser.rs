@@ -1,31 +1,41 @@
 use crate::lexer::{SpannedToken, Token};
-use crate::errors::parse::ParseError;
 use crate::ast::ast::{Expr, Statement};
 use chumsky::prelude::*;
 
-
-pub fn parser_integer<'a>() -> impl Parser<'a, &'a [SpannedToken], Expr, Simple<SpannedToken>> {
+pub fn parser_integer<'src>() -> impl Parser<'src, &'src [SpannedToken], Expr> + Clone {
     select! {
-        SpannedToken { token: Token::Int(value), ..} => Expr::Int(value),
+        SpannedToken { token: Token::Int(value), .. } => Expr::Int(value),
     }
 }
 
-pub fn parser_ident<'a>() -> impl Parser<'a, &'a[SpannedToken], Expr, Simple<SpannedToken>> {
-    select!{
-        SpannedToken { token: Token::Ident(name), ..} => Expr::Ident(name),
+pub fn parser_ident<'src>() -> impl Parser<'src, &'src [SpannedToken], Expr> + Clone {
+    select! {
+        SpannedToken { token: Token::Ident(name), .. } => Expr::Ident(name),
     }
 }
 
-pub fn parser_expr<'a>() -> impl Parser<'a, &'a[SpannedToken], Expr, Simple<SpannedToken>> {
-    let atom = parser_integer().or(parser_ident());
-        let pipe_op = select! {
-            SpannedToken { token: Token::Pipe, ..} => (),
-        };
-        atom.clone().then(pipe_op.ignore_then(atom).repeated())
-        .foldl(|left, right| Expr::Pipeline(Box::new(left), Box::new(right)))
+fn parser_atom<'src>() -> impl Parser<'src, &'src [SpannedToken], Expr> + Clone {
+    parser_integer().or(parser_ident())
 }
 
-pub fn parser_yell<'a>() -> impl Parser<'a, &'a [SpannedToken], Statement, Simple<SpannedToken>> {
+pub fn parser_expr<'src>() -> impl Parser<'src, &'src [SpannedToken], Expr> + Clone {
+    let pipe = select! {
+        SpannedToken { token: Token::Pipe, .. } => (),
+    };
+
+    parser_atom().foldl(
+        pipe.ignore_then(parser_atom()).repeated(),
+        |left, right| Expr::Pipeline(Box::new(left), Box::new(right)),
+    )
+}
+
+pub fn parser_name<'src>() -> impl Parser<'src, &'src [SpannedToken], String> + Clone {
+    select! {
+        SpannedToken { token: Token::Ident(name), .. } => name,
+    }
+}
+
+pub fn parser_yell<'src>() -> impl Parser<'src, &'src [SpannedToken], Statement> + Clone {
     let yell_kw = select! {
         SpannedToken { token: Token::Yell, .. } => (),
     };
@@ -34,37 +44,31 @@ pub fn parser_yell<'a>() -> impl Parser<'a, &'a [SpannedToken], Statement, Simpl
         SpannedToken { token: Token::Semicolon, .. } => (),
     };
 
-    yell_kw.ignore_then(parser_expr())
+    yell_kw
+        .ignore_then(parser_expr())
         .then_ignore(semi)
         .map(|expr| Statement::Yell { expr })
 }
 
-
-pub fn parser_name<'a>() -> impl Parser<'a, &'a[SpannedToken], String, Simple<SpannedToken>> {
-    select!{
-        SpannedToken { token: Token::Ident(name), ..} => name,
-    }
-}
-
-fn parser_let<'a>() -> impl Parser<'a, &'a[SpannedToken], Statement, Simple<SpannedToken>> {
+fn parser_let<'src>() -> impl Parser<'src, &'src [SpannedToken], Statement> + Clone {
     let grab_kw = select! {
-        SpannedToken { token: Token::Grab, ..} => (),
+        SpannedToken { token: Token::Grab, .. } => (),
     };
     let equals = select! {
-        SpannedToken { token: Token::Equals, ..} => (),
+        SpannedToken { token: Token::Equals, .. } => (),
     };
     let semi = select! {
-        SpannedToken { token: Token::Semicolon, ..} => (),
+        SpannedToken { token: Token::Semicolon, .. } => (),
     };
+
     grab_kw
         .ignore_then(parser_name())
         .then_ignore(equals)
         .then(parser_expr())
         .then_ignore(semi)
         .map(|(name, expr)| Statement::Let { name, expr })
-
 }
 
-pub fn parser_statement<'a>() -> impl Parser<'a, &'a[SpannedToken], Statement, Simple<SpannedToken>> {
+pub fn parser_statement<'src>() -> impl Parser<'src, &'src [SpannedToken], Statement> + Clone {
     parser_let().or(parser_yell())
 }

@@ -16,5 +16,6 @@ pub enum Expr {
 
     Ident(String),
     Int(i64),
+    String(String),
     Pipeline(Box<Expr>, Box<Expr>),
 }

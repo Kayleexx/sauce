@@ -1,0 +1,2 @@
+grab x = 10;
+yell x |> yell;
