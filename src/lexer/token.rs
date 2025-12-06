@@ -15,13 +15,16 @@ pub enum Token {
     #[token("=")]
     Equals, 
 
-    #[regex(r"[a-zA-Z_][a-zA-Z0-9_]*")]
-    Ident,
-    #[regex(r"[0-9]+")]
-    Int,
-    
-    #[regex(r#""([^"\\]|\\t|\\u|\\n|\\")*""#)]
-    String,
+   
+    #[regex(r"[a-zA-Z_][a-zA-Z0-9_]*", |lex| lex.slice().to_string())]
+    Ident(String),
+
+    #[regex(r"[0-9]+", |lex| lex.slice().parse::<i64>().unwrap())]
+    Int(i64),
+
+    #[regex(r#""([^"\\]|\\t|\\u|\\n|\\")*""#, |lex| lex.slice().to_string())]
+    String(String),
+
 
     #[token("(")]
     LParen,
@@ -36,6 +39,4 @@ pub enum Token {
     #[token(";")]
     Semicolon,
 
-    #[regex(r".", priority = 0)] 
-    Error,
 }

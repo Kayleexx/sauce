@@ -36,14 +36,9 @@ impl<'input> Iterator for Lexer<'input> {
         let span = Span::new(range.start, range.end);
 
         match token_result {
-            Ok(token) => {
-                if token == Token::Error {
-                    Some(Err(LexError::InvalidToken(span)))
-                } else {
-                    Some(Ok(SpannedToken::new(token, span)))
-                }
-            }
-            Err(_) => Some(Err(LexError::InvalidToken(span))),
+    Ok(token) => Some(Ok(SpannedToken::new(token, span))),
+    Err(_) => Some(Err(LexError::InvalidToken(span))),
+
         }
     }
 }
