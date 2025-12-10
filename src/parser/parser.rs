@@ -55,14 +55,37 @@ fn parser_atom<'src>() -> impl Parser<'src, &'src [SpannedToken], Expr> + Clone 
         .or(parser_ident())
 }
 
+pub fn parser_string<'src>() -> impl Parser<'src, &'src [SpannedToken], Expr> + Clone {
+    select! { SpannedToken { token: Token::String(value), ..} => Expr::String(value) }
+}
 pub fn parser_expr<'src>() -> impl Parser<'src, &'src [SpannedToken], Expr> + Clone {
-    let pipe = select! {
-        SpannedToken { token: Token::Pipe, .. } => (),
-    };
+    recursive(|expr| {
 
-    parser_atom().foldl( pipe.ignore_then(parser_atom()).repeated(),
+        let atom_base = parser_integer()
+            .or(parser_ident())
+            .or(parser_string());
+
+        let lparen = select! {
+            SpannedToken { token: Token::LParen, .. } => (),
+        };
+        let rparen = select! {
+            SpannedToken { token: Token::RParen, .. } => (),
+        };
+
+        let paren_expr = lparen
+            .ignore_then(expr.clone())
+            .then_ignore(rparen);
+
+        let atom = atom_base.or(paren_expr);
+        let atom_for_pipe = atom.clone();
+        let pipe = select! {
+            SpannedToken { token: Token::Pipe, .. } => (),
+        };
+        atom.foldl( pipe.ignore_then(atom_for_pipe).repeated(),
         |left, right| Expr::Pipeline(Box::new(left), Box::new(right)),
     )
+
+    })
 }
 
 pub fn parser_name<'src>() -> impl Parser<'src, &'src [SpannedToken], String> + Clone {

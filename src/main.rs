@@ -12,7 +12,6 @@ fn main() {
     let src = std::fs::read_to_string(&src_path)
         .unwrap_or_else(|e| panic!("failed to read {}: {e}", src_path));
 
-    // LEXING
     let lexer = Lexer::new(&src);
     let mut tokens: Vec<SpannedToken> = Vec::new();
 
@@ -25,7 +24,7 @@ fn main() {
             }
         }
     }
-    // PARSING
+
     let parser = parser_statement()
         .repeated()
         .collect::<Vec<_>>();

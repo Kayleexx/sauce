@@ -42,3 +42,51 @@ fn parse_incomplete_input() {
 
     assert!(matches!(result, Err(ParseError::Generic(_))));
 }
+
+#[test]
+fn parse_parenthesized_pipeline() {
+    let src = "grab x = (1 |> 2);";
+    let tokens = Lexer::new(src)
+        .collect::<Result<Vec<_>, _>>()
+        .expect("lex ok");
+
+    let parser = SauceParser::new();
+    let ast = parser.parse(&tokens).expect("parse ok");
+
+    assert_eq!(ast.items.len(), 1);
+    match &ast.items[0] {
+        Statement::Let { name, expr } => {
+            assert_eq!(name, "x");
+            match expr {
+                Expr::Pipeline(left, right) => {
+                    assert!(matches!(**left, Expr::Int(1)));
+                    assert!(matches!(**right, Expr::Int(2)));
+                }
+                other => panic!("expected pipeline, got {other:?}"),
+            }
+        }
+        other => panic!("expected let, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_string_literal() {
+    let src = "yell \"sauce\";";
+    let tokens = Lexer::new(src)
+        .collect::<Result<Vec<_>, _>>()
+        .expect("lex ok");
+
+    let parser = SauceParser::new();
+    let ast = parser.parse(&tokens).expect("parse ok");
+
+    assert_eq!(ast.items.len(), 1);
+    match &ast.items[0] {
+        Statement::Yell { expr } => {
+            match expr {
+                Expr::String(s) => assert_eq!(s, "\"sauce\""), // or unescaped version depending on your lexer
+                other => panic!("expected string expr, got {other:?}"),
+            }
+        }
+        other => panic!("expected yell, got {other:?}"),
+    }
+}
