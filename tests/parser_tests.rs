@@ -81,12 +81,10 @@ fn parse_string_literal() {
 
     assert_eq!(ast.items.len(), 1);
     match &ast.items[0] {
-        Statement::Yell { expr } => {
-            match expr {
-                Expr::String(s) => assert_eq!(s, "\"sauce\""), // or unescaped version depending on your lexer
-                other => panic!("expected string expr, got {other:?}"),
-            }
-        }
+        Statement::Yell { expr } => match expr {
+            Expr::String(s) => assert_eq!(s, "\"sauce\""),
+            other => panic!("expected string expr, got {other:?}"),
+        },
         other => panic!("expected yell, got {other:?}"),
     }
 }
