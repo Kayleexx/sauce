@@ -4,7 +4,7 @@ pub struct Ast {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum Statement{
+pub enum Statement {
     ExprStmt(Expr),
     Let { name: String, expr: Expr },
     Yell { expr: Expr },
@@ -13,7 +13,6 @@ pub enum Statement{
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
-
     Ident(String),
     Int(i64),
     String(String),

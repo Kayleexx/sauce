@@ -1,6 +1,6 @@
+use sauce::errors::lex::LexError;
 use sauce::lexer::{Lexer, SpannedToken, Token};
 use sauce::util::span::Span;
-use sauce::errors::lex::LexError;
 
 fn unwrap_ok_token(item: &Result<SpannedToken, LexError>) -> &SpannedToken {
     item.as_ref().expect("expected Ok token, got Err")
@@ -12,7 +12,6 @@ fn basic_pipeline_lexing() {
     let lexer = Lexer::new(src);
     let tokens: Vec<_> = lexer.collect();
     assert_eq!(tokens.len(), 6);
-
 
     let t0 = unwrap_ok_token(&tokens[0]);
     assert_eq!(t0.token, Token::Grab);

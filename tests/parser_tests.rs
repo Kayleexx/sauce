@@ -1,7 +1,7 @@
+use sauce::ast::ast::{Expr, Statement};
+use sauce::errors::parse::ParseError;
 use sauce::lexer::Lexer;
 use sauce::parser::SauceParser;
-use sauce::ast::ast::{Statement, Expr};
-use sauce::errors::parse::ParseError;
 
 #[test]
 fn parse_basic_pipeline() {
@@ -33,7 +33,7 @@ fn parse_basic_pipeline() {
 
 #[test]
 fn parse_incomplete_input() {
-    let src = "grab x = 1 |>"; 
+    let src = "grab x = 1 |>";
     let lexer = Lexer::new(src);
     let tokens: Vec<_> = lexer.collect::<Result<_, _>>().unwrap();
 

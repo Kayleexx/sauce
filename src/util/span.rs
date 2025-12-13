@@ -12,7 +12,7 @@ impl Span {
     }
 
     pub fn len(&self) -> usize {
-        return self.end - self.start;
+        self.end - self.start
     }
 
     pub fn is_empty(&self) -> bool {

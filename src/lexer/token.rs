@@ -1,7 +1,7 @@
 use logos::Logos;
 
 #[derive(Logos, Debug, Clone, PartialEq)]
-#[logos(skip r"[ \t\r\n\f]+")] 
+#[logos(skip r"[ \t\r\n\f]+")]
 pub enum Token {
     #[token("grab")]
     Grab,
@@ -13,9 +13,8 @@ pub enum Token {
     Pipe,
 
     #[token("=")]
-    Equals, 
+    Equals,
 
-   
     #[regex(r"[a-zA-Z_][a-zA-Z0-9_]*", |lex| lex.slice().to_string())]
     Ident(String),
 
@@ -24,7 +23,6 @@ pub enum Token {
 
     #[regex(r#""([^"\\]|\\t|\\u|\\n|\\")*""#, |lex| lex.slice().to_string())]
     String(String),
-
 
     #[token("(")]
     LParen,
@@ -38,5 +36,4 @@ pub enum Token {
     Comma,
     #[token(";")]
     Semicolon,
-
 }

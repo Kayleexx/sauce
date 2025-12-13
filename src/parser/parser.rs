@@ -1,6 +1,6 @@
-use crate::lexer::{SpannedToken, Token};
-use crate::ast::ast::{Expr, Statement, Ast};
+use crate::ast::ast::{Ast, Expr, Statement};
 use crate::errors::parse::ParseError;
+use crate::lexer::{SpannedToken, Token};
 
 use chumsky::prelude::*;
 use chumsky::select;
@@ -13,8 +13,10 @@ impl SauceParser {
     }
 
     pub fn parse(&self, tokens: &[SpannedToken]) -> Result<Ast, ParseError> {
-        let stmts_parser = parser_statement().repeated()
-            .collect::<Vec<_>>();
+        let stmts_parser = parser_statement()
+            .repeated()
+            .collect::<Vec<_>>()
+            .then_ignore(end());
 
         let parse_result = stmts_parser.parse(tokens);
         let result = parse_result.into_result();
@@ -37,7 +39,6 @@ impl SauceParser {
     }
 }
 
-
 pub fn parser_integer<'src>() -> impl Parser<'src, &'src [SpannedToken], Expr> + Clone {
     select! {
         SpannedToken { token: Token::Int(value), .. } => Expr::Int(value),
@@ -50,22 +51,21 @@ pub fn parser_ident<'src>() -> impl Parser<'src, &'src [SpannedToken], Expr> + C
     }
 }
 
-fn parser_atom<'src>() -> impl Parser<'src, &'src [SpannedToken], Expr> + Clone {
-    parser_integer()
-        .or(parser_ident())
-}
-
 pub fn parser_string<'src>() -> impl Parser<'src, &'src [SpannedToken], Expr> + Clone {
     select! { SpannedToken { token: Token::String(value), ..} => Expr::String(value) }
 }
 pub fn parser_expr<'src>() -> impl Parser<'src, &'src [SpannedToken], Expr> + Clone {
-    recursive(|expr| {let toss_kw = select! {
+    recursive(|expr| {
+        let toss_kw = select! {
             SpannedToken { token: Token::Toss, .. } => (),
         };
 
-        let toss_expr = toss_kw.ignore_then(parser_name()).then(expr.clone().or_not())
+        let toss_expr = toss_kw
+            .ignore_then(parser_name())
+            .then(expr.clone().or_not())
             .map(|(effect, arg)| Expr::Toss {
-                effect, arg: arg.map(Box::new),
+                effect,
+                arg: arg.map(Box::new),
             });
 
         let atom_base = parser_integer()
@@ -80,9 +80,7 @@ pub fn parser_expr<'src>() -> impl Parser<'src, &'src [SpannedToken], Expr> + Cl
             SpannedToken { token: Token::RParen, .. } => (),
         };
 
-        let paren_expr = lparen
-            .ignore_then(expr.clone())
-            .then_ignore(rparen);
+        let paren_expr = lparen.ignore_then(expr.clone()).then_ignore(rparen);
 
         let atom = atom_base.or(paren_expr);
         let atom_for_pipe = atom.clone();
@@ -91,10 +89,9 @@ pub fn parser_expr<'src>() -> impl Parser<'src, &'src [SpannedToken], Expr> + Cl
             SpannedToken { token: Token::Pipe, .. } => (),
         };
 
-        atom.foldl(
-            pipe.ignore_then(atom_for_pipe).repeated(),
-            |left, right| Expr::Pipeline(Box::new(left), Box::new(right)),
-        )
+        atom.foldl(pipe.ignore_then(atom_for_pipe).repeated(), |left, right| {
+            Expr::Pipeline(Box::new(left), Box::new(right))
+        })
     })
 }
 
@@ -138,16 +135,13 @@ fn parser_let<'src>() -> impl Parser<'src, &'src [SpannedToken], Statement> + Cl
         .map(|(name, expr)| Statement::Let { name, expr })
 }
 
-
 fn parser_expr_stmt<'src>() -> impl Parser<'src, &'src [SpannedToken], Statement> + Clone {
     let semi = select! {
         SpannedToken { token: Token::Semicolon, .. } => (),
     };
 
-    parser_expr().then_ignore(semi)
-        .map(Statement::ExprStmt)
+    parser_expr().then_ignore(semi).map(Statement::ExprStmt)
 }
-
 
 pub fn parser_statement<'src>() -> impl Parser<'src, &'src [SpannedToken], Statement> + Clone {
     parser_let().or(parser_yell()).or(parser_expr_stmt())

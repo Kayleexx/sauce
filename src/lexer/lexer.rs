@@ -1,6 +1,6 @@
+use crate::errors::lex::LexError;
 use crate::lexer::token::Token;
 use crate::util::span::Span;
-use crate::errors::lex::LexError;
 use logos::Logos;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -36,9 +36,8 @@ impl<'input> Iterator for Lexer<'input> {
         let span = Span::new(range.start, range.end);
 
         match token_result {
-    Ok(token) => Some(Ok(SpannedToken::new(token, span))),
-    Err(_) => Some(Err(LexError::InvalidToken(span))),
-
+            Ok(token) => Some(Ok(SpannedToken::new(token, span))),
+            Err(_) => Some(Err(LexError::InvalidToken(span))),
         }
     }
 }
