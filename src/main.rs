@@ -1,13 +1,42 @@
+use clap::{CommandFactory, Parser};
 use sauce::lexer::Lexer;
 use sauce::parser::SauceParser;
+use sauce::typechecker::checker::typecheck_program;
+
+#[derive(Parser)]
+#[command(name = "sauce", about = "Sauce language compiler")]
+struct Args {
+    /// Input source file
+    filename: Option<String>,
+
+    /// Output prefix for files
+    #[arg(short, long)]
+    output: Option<String>,
+
+    /// Output lexed tokens
+    #[arg(long, visible_alias = "lex")]
+    tokens: bool,
+
+    /// Output parsed AST
+    #[arg(long, visible_alias = "parse")]
+    ast: bool,
+
+    /// Typecheck the program
+    #[arg(long)]
+    check: bool,
+}
 
 fn main() {
-    let src_path = std::env::args()
-        .nth(1)
-        .unwrap_or_else(|| "example.sauce".to_string());
+    let args = Args::parse();
+    let filename = args.filename.as_ref().unwrap_or_else(|| {
+        let _ = Args::command().print_help();
+        std::process::exit(0);
+    });
 
-    let src = std::fs::read_to_string(&src_path)
-        .unwrap_or_else(|e| panic!("failed to read {}: {e}", src_path));
+    let src = std::fs::read_to_string(&filename).unwrap_or_else(|e| {
+        eprintln!("Error reading {}: {}", filename, e);
+        std::process::exit(1);
+    });
 
     let lexer = Lexer::new(&src);
     let tokens: Vec<_> = lexer.collect::<Result<_, _>>().unwrap_or_else(|e| {
@@ -15,11 +44,47 @@ fn main() {
         std::process::exit(1);
     });
 
+    if args.tokens {
+        output("Tokens", &format!("{:#?}", &tokens), &args.output, "tokens");
+
+        if !args.ast && !args.check {
+            return;
+        }
+    }
+
     let parser = SauceParser::new();
     let ast = parser.parse(&tokens).unwrap_or_else(|e| {
         eprintln!("parse error: {e}");
         std::process::exit(1);
     });
 
-    println!("{:#?}", ast);
+    if args.ast {
+        output("AST", &format!("{:#?}", &ast), &args.output, "ast");
+        if !args.check {
+            return;
+        }
+    }
+
+    typecheck_program(&ast).unwrap_or_else(|e| {
+        eprintln!("typecheck error: {e}");
+        std::process::exit(1);
+    });
+
+    if args.check {
+        return;
+    }
+
+    todo!("codegen");
+}
+
+fn output(label: &str, content: &str, prefix: &Option<String>, suffix: &str) {
+    if let Some(p) = prefix {
+        let filename = format!("{}.{}", p, suffix);
+        if let Err(e) = std::fs::write(&filename, content) {
+            eprintln!("Error writing to {}: {}", filename, e);
+            std::process::exit(1);
+        }
+    } else {
+        println!("{}:\n{}", label, content);
+    }
 }
