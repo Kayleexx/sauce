@@ -46,9 +46,7 @@ fn typecheck_toss() {
 #[test]
 fn typecheck_pipeline_into_literal_should_fail() {
     let src = "grab x = 1 |> 2 |> 3;";
-    let tokens = Lexer::new(src)
-        .collect::<Result<Vec<_>, _>>()
-        .unwrap();
+    let tokens = Lexer::new(src).collect::<Result<Vec<_>, _>>().unwrap();
 
     let ast = SauceParser::new().parse(&tokens).unwrap();
     let result = typecheck_program(&ast);

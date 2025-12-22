@@ -4,7 +4,6 @@ use sauce::parser::SauceParser;
 use sauce::typechecker::checker::typecheck_program;
 use sauce::interpreter::eval::eval_program;
 
-
 #[derive(Parser)]
 #[command(name = "sauce", about = "Sauce language compiler")]
 struct Args {
@@ -53,7 +52,7 @@ fn main() {
     if args.tokens {
         output("Tokens", &format!("{:#?}", &tokens), &args.output, "tokens");
 
-        if !args.ast && !args.check {
+        if !args.ast && !args.check && !args.run {
             return;
         }
     }
@@ -66,7 +65,8 @@ fn main() {
 
     if args.ast {
         output("AST", &format!("{:#?}", &ast), &args.output, "ast");
-        if !args.check {
+
+        if !args.check && !args.run {
             return;
         }
     }
@@ -80,6 +80,15 @@ fn main() {
         return;
     }
 
+    if args.run {
+        eval_program(&ast).unwrap_or_else(|e| {
+            eprintln!("runtime error: {e}");
+            std::process::exit(1);
+        });
+        return;
+    }
+
+    // fallback: codegen (future)
     todo!("codegen");
 }
 
