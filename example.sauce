@@ -1,2 +1,5 @@
-grab x = 67 |> _;
-yell x;
+grab a = 10 |> _;
+grab b = 20 |> _;
+
+yell a;
+yell b;

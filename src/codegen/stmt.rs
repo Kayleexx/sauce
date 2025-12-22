@@ -1,6 +1,5 @@
 use crate::ast::ast::Statement;
 use crate::codegen::{context::Codegen, expr::codegen_expr};
-use crate::typechecker::types::Type;
 use inkwell::values::PointerValue;
 use std::collections::HashMap;
 
@@ -20,9 +19,10 @@ pub fn codegen_stmt<'ctx>(cg: &mut Codegen<'ctx>, env: &mut LocalEnv<'ctx>, stmt
     match stmt {
         Statement::Let { name, expr } => {
             let value = codegen_expr(cg, env, expr);
+
             let ptr = cg
                 .builder
-                .build_alloca(cg.context.i64_type(), name)
+                .build_alloca(value.get_type(), name)
                 .expect("alloca failed");
 
             cg.builder.build_store(ptr, value).expect("store failed");
@@ -32,16 +32,11 @@ pub fn codegen_stmt<'ctx>(cg: &mut Codegen<'ctx>, env: &mut LocalEnv<'ctx>, stmt
 
         Statement::Yell { expr } => {
             let value = codegen_expr(cg, env, expr);
-            let ty = crate::typechecker::checker::typecheck_expr(
-                &crate::typechecker::checker::TypeEnv::new(),
-                expr,
-            )
-            .expect("typecheck failed in codegen");
 
-            let fmt_str = match ty {
-                Type::Int => "%ld\n",
-                Type::String => "%s\n",
-                Type::Unit => "%ld\n",
+            let fmt_str = match value {
+                inkwell::values::BasicValueEnum::IntValue(_) => "%ld\n",
+                inkwell::values::BasicValueEnum::PointerValue(_) => "%s\n",
+                _ => "%ld\n",
             };
 
             let fmt = cg
@@ -65,7 +60,7 @@ pub fn codegen_stmt<'ctx>(cg: &mut Codegen<'ctx>, env: &mut LocalEnv<'ctx>, stmt
         Statement::Toss { .. } => {
             eprintln!(
                 "codegen error: `toss` is not supported in the LLVM backend yet.\n\
-         Hint: use the interpreter backend to run programs with effects."
+Hint: use the interpreter backend to run programs with effects."
             );
             std::process::exit(1);
         }

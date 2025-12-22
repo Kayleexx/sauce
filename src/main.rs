@@ -7,7 +7,21 @@ use sauce::parser::SauceParser;
 use sauce::typechecker::checker::typecheck_program;
 
 #[derive(Parser)]
-#[command(name = "sauce", about = "The Sauce programming language", version)]
+#[command(
+    name = "sauce",
+    about = "The Sauce programming language",
+    version,
+    long_about = r#"
+███████╗ █████╗ ██╗   ██╗ ██████╗ ███████╗
+██╔════╝██╔══██╗██║   ██║██╔════╝ ██╔════╝
+███████╗███████║██║   ██║██║  ███╗█████╗  
+╚════██║██╔══██║██║   ██║██║   ██║██╔══╝  
+███████║██║  ██║╚██████╔╝╚██████╔╝███████╗
+╚══════╝╚═╝  ╚═╝ ╚═════╝  ╚═════╝ ╚══════╝
+
+Sauce v0.1.0 — pipeline-first, effect-aware
+"#
+)]
 struct Cli {
     #[command(subcommand)]
     command: Option<Command>,
@@ -18,18 +32,11 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
-    
-    Run {
-        filename: String,
-    },
+    Run { filename: String },
 
-    Check {
-        filename: String,
-    },
+    Check { filename: String },
 
-    Build {
-        filename: String,
-    },
+    Build { filename: String },
 }
 
 #[derive(Parser)]
@@ -62,22 +69,18 @@ fn main() {
     let cli = Cli::parse();
 
     if let Some(cmd) = &cli.command {
-        print_banner();
-
         match cmd {
             Command::Run { filename } => {
                 run_pipeline(filename, Mode::Run);
-                return;
             }
             Command::Check { filename } => {
                 run_pipeline(filename, Mode::Check);
-                return;
             }
             Command::Build { filename } => {
                 run_pipeline(filename, Mode::Build);
-                return;
             }
         }
+        return;
     }
 
     let args = &cli.args;
@@ -87,10 +90,7 @@ fn main() {
         std::process::exit(0);
     });
 
-    print_banner();
-
     let src = read_file(filename);
-
     let tokens = lex(&src);
 
     if args.tokens {
@@ -182,7 +182,6 @@ fn parse(tokens: &[sauce::lexer::SpannedToken]) -> sauce::ast::ast::Ast {
     })
 }
 
-
 fn output(label: &str, content: &str, prefix: &Option<String>, suffix: &str) {
     if let Some(p) = prefix {
         let filename = format!("{}.{}", p, suffix);
@@ -193,19 +192,4 @@ fn output(label: &str, content: &str, prefix: &Option<String>, suffix: &str) {
     } else {
         println!("{}:\n{}", label, content);
     }
-}
-
-fn print_banner() {
-    println!(
-        r#"
-███████╗ █████╗ ██╗   ██╗ ██████╗ ███████╗
-██╔════╝██╔══██╗██║   ██║██╔════╝ ██╔════╝
-███████╗███████║██║   ██║██║  ███╗█████╗  
-╚════██║██╔══██║██║   ██║██║   ██║██╔══╝  
-███████║██║  ██║╚██████╔╝╚██████╔╝███████╗
-╚══════╝╚═╝  ╚═╝ ╚═════╝  ╚═════╝ ╚══════╝
-
-Sauce v0.1.0 — pipeline-first, effect-aware
-"#
-    );
 }

@@ -1,35 +1,65 @@
 # Sauce 🌶️
 
-**Sauce** is a statically typed, expression-oriented programming language that *feels like a script*.
+Sauce is a **statically typed programming language that feels like a script**.
 
-It is designed around **pipelines as the primary data flow** and **algebraic effects (`toss` / `handle`) instead of async/await**.
-The goal is to explore a modern, minimal language design while building a full compiler from scratch in Rust.
+It is built around two core ideas:
 
-This repository contains the **compiler frontend and typechecker**, with LLVM-based code generation planned next.
+- **Pipelines (`|>`) are the default way data flows**
+- **Effects are explicit (`toss`) instead of hidden control flow**
+
+Sauce is intentionally small.  
+It focuses on correctness and clarity over features.
+
+This repository contains a full compiler pipeline written in Rust:
+- lexer
+- parser
+- typechecker
+- interpreter
+- LLVM backend
 
 ---
 
-## Why Sauce?
+## What can Sauce do right now?
 
-Most languages bolt pipelines, async, and effects on top of existing semantics.
+As of **v0.1.0**, Sauce can:
 
-Sauce does the opposite:
+- parse and typecheck real programs
+- run programs using an interpreter
+- compile programs to native binaries using LLVM
+- handle integers and strings
+- express data flow using pipelines
+- represent effects explicitly (interpreter only)
 
-* Pipelines (`|>`) are the *default* way data flows
-* Effects are explicit (`toss`) instead of implicit control flow
-* The language stays small, readable, and predictable
+Sauce is early, but it is **real and working**.
 
-Example:
+---
+
+## A simple example
 
 ```sauce
-grab x = (1 |> 2) |> toss boom "oh no";
-yell x;
-toss crash "fatal";
+yell "answer is:";
+yell 67;
+````
+
+Interpreter output:
+
 ```
+String("answer is:")
+Int(67)
+```
+
+LLVM-compiled output:
+
+```
+answer is:
+67
+```
+
+The same program can be interpreted, typechecked, or compiled.
 
 ---
 
-## Language Overview
+## Language basics
 
 ### Keywords
 
@@ -43,18 +73,39 @@ toss crash "fatal";
 
 ## Expressions
 
-Sauce is expression-first.
+Sauce is expression-oriented.
 
 Supported expressions:
 
-* Integer literals
-* String literals
-* Identifiers
-* Parenthesized expressions
-* Pipelines (`a |> b |> c`)
-* Effect expressions (`toss effect arg`)
+* integer literals (`42`)
+* string literals (`"hello"`)
+* identifiers
+* parenthesized expressions
+* pipelines (`a |> b`)
+* effect expressions (`toss effect arg`)
 
-### Pipelines
+---
+
+## Pipelines
+
+Pipelines are the main way data flows.
+
+```sauce
+a |> b
+```
+
+This means:
+
+1. evaluate `a`
+2. bind the result to `_`
+3. evaluate `b`
+
+Example:
+
+```sauce
+grab x = 10 |> _;
+yell x;
+```
 
 Pipelines are **left-associative**:
 
@@ -62,31 +113,28 @@ Pipelines are **left-associative**:
 a |> b |> c
 ```
 
-parses as:
+is evaluated as:
 
 ```
 (a |> b) |> c
 ```
 
-This is enforced in the parser using a fold-left strategy.
+### Important rule
+
+The right side of a pipeline **cannot be a literal**.
+Pipelines represent computation, not value chaining.
 
 ---
 
-### Effect Expressions (`toss`)
+## The `_` placeholder
 
-`toss` is a first-class expression, not a statement-only construct.
+Inside a pipeline, `_` refers to the value from the left side.
 
 ```sauce
-toss network_error "timeout"
+grab x = 5 |> _;
 ```
 
-It can appear:
-
-* inside pipelines
-* inside bindings
-* as a standalone expression statement
-
-This design allows effects to compose naturally with data flow.
+Outside a pipeline, `_` has no meaning.
 
 ---
 
@@ -100,238 +148,120 @@ yell expr;
 expr;
 ```
 
-`toss` does **not** need a special statement form — it is parsed as an expression statement when used alone.
+There is no special `toss` statement.
+`toss` is just an expression.
 
 ---
 
-## Compiler Architecture
+## Effects (`toss`)
 
+`toss` represents an explicit effect.
+
+```sauce
+toss network_error "timeout";
 ```
-source code
-   ↓
-Lexer (Logos)
-   ↓
-SpannedToken stream
-   ↓
-Parser (Chumsky)
-   ↓
-AST
-   ↓
-Typechecker
-   ↓
-(codegen next)
-```
+
+Notes:
+
+* Effects are supported in the interpreter
+* Effects are **not supported in the LLVM backend yet**
+* Attempting to compile effects will produce a clear error
+
+This is an intentional design boundary for v0.1.
 
 ---
 
-## Lexer
+## Type system
 
-* Built using **Logos**
-* Produces `SpannedToken { token, span }`
-* Every token carries byte-range information for error reporting
-* Invalid tokens produce structured `LexError`
-
----
-
-## Parser
-
-* Built using **Chumsky**
-* Operates on `SpannedToken` instead of raw text
-* Fully recursive expression grammar
-* Clean separation between expressions and statements
-* Dedicated parser driver (`SauceParser`) used by the CLI
-
-### Key parser features
-
-* Recursive expressions via `recursive(|expr| { ... })`
-* Correct pipeline associativity using `foldl`
-* `toss` integrated directly into expression grammar
-* Expression statements supported
-
----
-
-## AST
-
-### Expressions
-
-```rust
-enum Expr {
-    Int(i64),
-    String(String),
-    Ident(String),
-    Pipeline(Box<Expr>, Box<Expr>),
-    Toss {
-        effect: String,
-        arg: Option<Box<Expr>>,
-    },
-}
-```
-
-### Statements
-
-```rust
-enum Statement {
-    Let { name: String, expr: Expr },
-    Yell { expr: Expr },
-    ExprStmt(Expr),
-}
-```
-
-### Program
-
-```rust
-struct Ast {
-    items: Vec<Statement>,
-}
-```
-
----
-
-## Type System (Implemented)
-
-Sauce currently has a **minimal but strict type system**.
+Sauce has a small but strict type system.
 
 ### Types
 
-```rust
-enum Type {
-    Int,
-    String,
-    Unit,
-}
+```text
+Int
+String
+Unit
 ```
 
-### Type Environment
+### Rules
 
-The typechecker tracks bindings using a scoped environment:
-
-```rust
-struct TypeEnv {
-    vars: HashMap<String, Type>,
-}
-```
+* Identifiers must be defined before use
+* Types are inferred
+* Pipelines propagate types from right to left
+* Effects evaluate to `Unit`
 
 ---
 
-## Type Checking Rules
-
-### Literals
-
-* `Int` → `Type::Int`
-* `String` → `Type::String`
-
-### Identifiers
-
-* Must exist in the environment
-* Otherwise → type error
-
-### `grab`
-
-```sauce
-grab x = expr;
-```
-
-* `expr` is typechecked
-* `x` is bound to that type
-
-### `yell`
-
-```sauce
-yell expr;
-```
-
-* Expression must be type-valid
-* Result is discarded
-
-### Pipelines
-
-```sauce
-a |> b
-```
-
-Rules:
-
-* `a` must be a valid expression
-* `b` must **not** be a literal (`Int` or `String`)
-* Resulting type is the type of the right-hand side
-
-This enforces that pipelines represent *computation*, not value chaining.
-
-### `toss`
-
-```sauce
-toss effect arg
-```
-
-* Always typechecks to `Unit`
-* Effects currently do not propagate types (handlers coming next)
-
----
-
-## Current Status
-
-### Implemented
-
-* Lexer with spans
-* Recursive parser
-* Expression grammar
-* Pipelines
-* `toss` syntax
-* AST
-* Typechecker
-* CLI runner that prints AST
-
-### Not Implemented Yet
-
-* Effect handlers (`handle`)
-* Effect typing
-* Code generation
-* Runtime system
-* Standard library
-
----
-
-## Next Steps
-
-### Short-term
-
-* Design `handle { ... }` blocks
-* Extend AST for handlers
-* Typecheck effect handling
-* Decide effect semantics (resume vs abort)
-
-### Medium-term
-
-* LLVM IR generation using Inkwell
-* Runtime support for `yell` and effects
-* `sauce build` / `sauce run` CLI
-
-### Long-term
-
-* Effect polymorphism
-* Better diagnostics (Ariadne)
-* Documentation & examples
-* Sauce v1.0
-
----
-
-## Building & Running
+## CLI usage
 
 ```bash
-cargo run
+sauce run example.sauce
+sauce check example.sauce
+sauce build example.sauce
 ```
 
-By default, the compiler reads `example.sauce` and prints the parsed AST.
+Legacy flags are also supported.
+
+---
+
+## Current limitations (important)
+
+Sauce v0.1.0 does **not** include:
+
+* arithmetic operators
+* conditionals
+* loops
+* functions
+
+Because of this, algorithms like prime checking or fibonacci
+are **not expressible yet**.
+
+This is intentional. The focus is on core semantics first.
+
+---
+
+## Compiler architecture
+
+```
+source code
+  ↓
+Lexer (Logos)
+  ↓
+Parser (Chumsky)
+  ↓
+AST
+  ↓
+Typechecker
+  ↓
+Interpreter or LLVM backend
+```
+
+Each phase is explicit and separate.
+
+---
+
+## Stability notes
+
+Sauce v0.1.0 is an early release.
+
+The architecture is stable, but:
+
+* the AST may evolve
+* effect handling is interpreter-only
+* the LLVM backend supports a pure subset
+
+Small, focused contributions are preferred.
 
 ---
 
 ## Philosophy
 
-Sauce is intentionally:
+Sauce is designed to be:
 
 * small
 * explicit
 * pipeline-first
 * effect-aware
 
-This project is as much about **learning language design and compiler architecture** as it is about building a usable language.
+It is built to understand how languages work, not to hide complexity.
+
