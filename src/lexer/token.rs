@@ -21,7 +21,9 @@ pub enum Token {
     #[regex(r"[0-9]+", |lex| lex.slice().parse::<i64>().unwrap())]
     Int(i64),
 
-    #[regex(r#""([^"\\]|\\t|\\u|\\n|\\")*""#, |lex| lex.slice().to_string())]
+    #[regex(r#""([^"\\]|\\t|\\u|\\n|\\")*""#, |lex| {
+    let s = lex.slice();
+    s[1..s.len() - 1].to_string()})]
     String(String),
 
     #[token("(")]

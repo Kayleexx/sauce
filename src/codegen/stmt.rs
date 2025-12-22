@@ -1,9 +1,8 @@
-use std::collections::HashMap;
-
-use inkwell::values::PointerValue;
-
 use crate::ast::ast::Statement;
 use crate::codegen::{context::Codegen, expr::codegen_expr};
+use crate::typechecker::types::Type;
+use inkwell::values::PointerValue;
+use std::collections::HashMap;
 
 pub struct LocalEnv<'ctx> {
     pub vars: HashMap<String, PointerValue<'ctx>>,
@@ -33,9 +32,21 @@ pub fn codegen_stmt<'ctx>(cg: &mut Codegen<'ctx>, env: &mut LocalEnv<'ctx>, stmt
 
         Statement::Yell { expr } => {
             let value = codegen_expr(cg, env, expr);
+            let ty = crate::typechecker::checker::typecheck_expr(
+                &crate::typechecker::checker::TypeEnv::new(),
+                expr,
+            )
+            .expect("typecheck failed in codegen");
+
+            let fmt_str = match ty {
+                Type::Int => "%ld\n",
+                Type::String => "%s\n",
+                Type::Unit => "%ld\n",
+            };
+
             let fmt = cg
                 .builder
-                .build_global_string_ptr("%ld\n", "fmt")
+                .build_global_string_ptr(fmt_str, "fmt")
                 .expect("format string failed");
 
             cg.builder
@@ -52,7 +63,11 @@ pub fn codegen_stmt<'ctx>(cg: &mut Codegen<'ctx>, env: &mut LocalEnv<'ctx>, stmt
         }
 
         Statement::Toss { .. } => {
-            panic!("toss is not supported in LLVM backend yet");
+            eprintln!(
+                "codegen error: `toss` is not supported in the LLVM backend yet.\n\
+         Hint: use the interpreter backend to run programs with effects."
+            );
+            std::process::exit(1);
         }
     }
 }
