@@ -2,6 +2,8 @@ use clap::{CommandFactory, Parser};
 use sauce::lexer::Lexer;
 use sauce::parser::SauceParser;
 use sauce::typechecker::checker::typecheck_program;
+use sauce::interpreter::eval::eval_program;
+
 
 #[derive(Parser)]
 #[command(name = "sauce", about = "Sauce language compiler")]
@@ -24,6 +26,10 @@ struct Args {
     /// Typecheck the program
     #[arg(long)]
     check: bool,
+
+    /// Run the program
+    #[arg(long)]
+    run: bool,
 }
 
 fn main() {

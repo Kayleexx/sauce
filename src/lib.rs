@@ -4,3 +4,4 @@ pub mod lexer;
 pub mod parser;
 pub mod typechecker;
 pub mod util;
+pub mod interpreter;
