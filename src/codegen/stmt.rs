@@ -1,11 +1,12 @@
-use inkwell::values::PointerValue;
 use std::collections::HashMap;
 
-use crate::ast::ast::{Expr, Statement};
-use crate::codegen::context::Codegen;
+use inkwell::values::PointerValue;
+
+use crate::ast::ast::Statement;
+use crate::codegen::{context::Codegen, expr::codegen_expr};
 
 pub struct LocalEnv<'ctx> {
-    vars: HashMap<String, PointerValue<'ctx>>,
+    pub vars: HashMap<String, PointerValue<'ctx>>,
 }
 
 impl<'ctx> LocalEnv<'ctx> {
@@ -19,47 +20,39 @@ impl<'ctx> LocalEnv<'ctx> {
 pub fn codegen_stmt<'ctx>(cg: &mut Codegen<'ctx>, env: &mut LocalEnv<'ctx>, stmt: &Statement) {
     match stmt {
         Statement::Let { name, expr } => {
-            if let Expr::Int(n) = expr {
-                let i64_ty = cg.context.i64_type();
+            let value = codegen_expr(cg, env, expr);
+            let ptr = cg
+                .builder
+                .build_alloca(cg.context.i64_type(), name)
+                .expect("alloca failed");
 
-                let ptr = cg
-                    .builder
-                    .build_alloca(i64_ty, name)
-                    .expect("alloca failed");
+            cg.builder.build_store(ptr, value).expect("store failed");
 
-                cg.builder
-                    .build_store(ptr, i64_ty.const_int(*n as u64, true))
-                    .expect("store failed");
-
-                env.vars.insert(name.clone(), ptr);
-            }
+            env.vars.insert(name.clone(), ptr);
         }
 
         Statement::Yell { expr } => {
-            if let Expr::Ident(name) = expr {
-                let ptr = env.vars.get(name).expect("unknown variable");
+            let value = codegen_expr(cg, env, expr);
+            let fmt = cg
+                .builder
+                .build_global_string_ptr("%ld\n", "fmt")
+                .expect("format string failed");
 
-                let i64_ty = cg.context.i64_type();
-                let val = cg
-                    .builder
-                    .build_load(i64_ty, *ptr, "loadtmp")
-                    .expect("load failed");
-
-                let fmt = cg
-                    .builder
-                    .build_global_string_ptr("%ld\n", "fmt")
-                    .expect("string ptr failed");
-
-                cg.builder
-                    .build_call(
-                        cg.printf,
-                        &[fmt.as_pointer_value().into(), val.into()],
-                        "printf_call",
-                    )
-                    .expect("printf call failed");
-            }
+            cg.builder
+                .build_call(
+                    cg.printf,
+                    &[fmt.as_pointer_value().into(), value.into()],
+                    "printf_call",
+                )
+                .expect("printf call failed");
         }
 
-        _ => {}
+        Statement::ExprStmt(expr) => {
+            let _ = codegen_expr(cg, env, expr);
+        }
+
+        Statement::Toss { .. } => {
+            panic!("toss is not supported in LLVM backend yet");
+        }
     }
 }

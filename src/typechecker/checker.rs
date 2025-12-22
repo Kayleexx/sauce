@@ -35,15 +35,24 @@ pub fn typecheck_expr(env: &TypeEnv, expr: &Expr) -> Result<Type, TypeError> {
         Expr::Toss { .. } => Ok(Type::Unit),
 
         Expr::Pipeline(left, right) => {
-            let _left_ty = typecheck_expr(env, left)?;
-            let right_ty = typecheck_expr(env, right)?;
+            let left_ty = typecheck_expr(env, left)?;
 
-            match right_ty {
-                Type::Int | Type::String => Err(TypeError::Generic(
-                    "right side of pipeline cannot be a literal".into(),
-                )),
-                _ => Ok(right_ty),
+            let mut pipeline_env = TypeEnv {
+                vars: env.vars.clone(),
+            };
+            pipeline_env.insert("_".to_string(), left_ty);
+
+            match **right {
+                Expr::Int(_) | Expr::String(_) => {
+                    return Err(TypeError::Generic(
+                        "right side of pipeline cannot be a literal".into(),
+                    ));
+                }
+                _ => {}
             }
+
+            let right_ty = typecheck_expr(&pipeline_env, right)?;
+            Ok(right_ty)
         }
     }
 }

@@ -1,4 +1,5 @@
 pub mod context;
+pub mod expr;
 pub mod llvm;
 pub mod runtime;
 pub mod stmt;
@@ -22,7 +23,6 @@ pub fn codegen(ast: &Ast) {
         .build_return(Some(&context.i32_type().const_int(0, false)));
 
     cg.module
-    .print_to_file("out.ll")
-    .expect("failed to write LLVM IR");
-
+        .print_to_file("out.ll")
+        .expect("failed to write LLVM IR");
 }

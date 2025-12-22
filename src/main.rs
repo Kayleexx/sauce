@@ -1,9 +1,9 @@
 use clap::{CommandFactory, Parser};
+use sauce::codegen::codegen;
 use sauce::interpreter::eval::eval_program;
 use sauce::lexer::Lexer;
 use sauce::parser::SauceParser;
 use sauce::typechecker::checker::typecheck_program;
-use sauce::codegen::codegen;
 
 #[derive(Parser)]
 #[command(name = "sauce", about = "Sauce language compiler")]
@@ -90,7 +90,6 @@ fn main() {
     }
 
     codegen(&ast);
-
 }
 
 fn output(label: &str, content: &str, prefix: &Option<String>, suffix: &str) {

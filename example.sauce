@@ -1,2 +1,2 @@
-grab x = 1;
+grab x = 67 |> _;
 yell x;
