@@ -1,5 +1,5 @@
-pub mod value;
+pub mod effects;
 pub mod env;
 pub mod error;
-pub mod effects;
 pub mod eval;
+pub mod value;

@@ -1,10 +1,5 @@
+use super::{effects::Effect, env::RuntimeEnv, error::RuntimeError, value::Value};
 use crate::ast::ast::{Ast, Expr, Statement};
-use super::{
-    env::RuntimeEnv,
-    value::Value,
-    error::RuntimeError,
-    effects::Effect,
-};
 
 type EvalResult<T> = Result<T, Control>;
 
@@ -25,10 +20,9 @@ fn eval_expr(expr: &Expr, env: &mut RuntimeEnv) -> EvalResult<Value> {
         Expr::Int(n) => Ok(Value::Int(*n)),
         Expr::String(s) => Ok(Value::String(s.clone())),
 
-        Expr::Ident(name) => {
-            env.get(name)
-                .ok_or_else(|| RuntimeError::UnknownVariable(name.clone()).into())
-        }
+        Expr::Ident(name) => env
+            .get(name)
+            .ok_or_else(|| RuntimeError::UnknownVariable(name.clone()).into()),
 
         Expr::Pipeline(lhs, rhs) => {
             let value = eval_expr(lhs, env)?;
@@ -88,9 +82,7 @@ pub fn eval_program(ast: &Ast) -> Result<(), RuntimeError> {
         match eval_stmt(stmt, &mut env) {
             Ok(_) => {}
             Err(Control::Error(e)) => return Err(e),
-            Err(Control::Effect(e)) => {
-                return Err(RuntimeError::UnhandledEffect(e.name))
-            }
+            Err(Control::Effect(e)) => return Err(RuntimeError::UnhandledEffect(e.name)),
         }
     }
 

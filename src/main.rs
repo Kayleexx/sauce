@@ -1,8 +1,9 @@
 use clap::{CommandFactory, Parser};
+use sauce::interpreter::eval::eval_program;
 use sauce::lexer::Lexer;
 use sauce::parser::SauceParser;
 use sauce::typechecker::checker::typecheck_program;
-use sauce::interpreter::eval::eval_program;
+use sauce::codegen::codegen;
 
 #[derive(Parser)]
 #[command(name = "sauce", about = "Sauce language compiler")]
@@ -88,8 +89,8 @@ fn main() {
         return;
     }
 
-    // fallback: codegen (future)
-    todo!("codegen");
+    codegen(&ast);
+
 }
 
 fn output(label: &str, content: &str, prefix: &Option<String>, suffix: &str) {
